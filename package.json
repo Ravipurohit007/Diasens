@@ -1,0 +1,11 @@
+{
+  "name": "freshdesk-cgm-dashboard",
+  "version": "1.0.0",
+  "description": "Live CGM Issues Dashboard powered by Freshdesk",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}

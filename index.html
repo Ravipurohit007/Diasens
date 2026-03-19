@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CGM Issues Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: white;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    header h1 { font-size: 1.3rem; font-weight: 600; letter-spacing: 0.3px; }
+    header span { font-size: 0.85rem; opacity: 0.7; }
+
+    .controls {
+      background: white;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-wrap: wrap;
+    }
+
+    .controls label { font-size: 0.85rem; font-weight: 500; color: #555; }
+
+    .controls input[type="date"] {
+      padding: 7px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .controls input[type="date"]:focus { border-color: #1e3a5f; }
+
+    .btn {
+      padding: 8px 20px;
+      background: #1e3a5f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #16304f; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    #status-bar {
+      font-size: 0.82rem;
+      color: #888;
+      margin-left: auto;
+    }
+
+    .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+    /* Summary cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      border-left: 4px solid #1e3a5f;
+    }
+
+    .card.green { border-left-color: #27ae60; }
+    .card.orange { border-left-color: #e67e22; }
+    .card.red { border-left-color: #e74c3c; }
+    .card.purple { border-left-color: #8e44ad; }
+
+    .card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .card .value { font-size: 2rem; font-weight: 700; color: #1a1a2e; }
+    .card .sub { font-size: 0.75rem; color: #aaa; margin-top: 4px; }
+
+    /* Charts grid */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
+
+    .chart-box {
+      background: white;
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .chart-box h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .chart-box.full { grid-column: 1 / -1; }
+
+    canvas { max-height: 280px; }
+
+    /* Table */
+    .table-box {
+      background: white;
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow-x: auto;
+    }
+
+    .table-box h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f7f8fa;
+      border-bottom: 2px solid #e0e0e0;
+      color: #555;
+      font-weight: 600;
+    }
+    tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.15s; }
+    tbody tr:hover { background: #f9fbff; }
+    tbody td { padding: 10px 12px; color: #333; vertical-align: middle; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge.tech { background: #eaf0fb; color: #1e3a5f; }
+    .badge.nontech { background: #fef3e2; color: #c0392b; }
+    .badge.resolved { background: #eafaf1; color: #27ae60; }
+    .badge.open { background: #eaf0fb; color: #2980b9; }
+    .badge.waiting { background: #fef9e7; color: #e67e22; }
+    .badge.pending { background: #f9ebff; color: #8e44ad; }
+    .badge.dup { background: #fde8e8; color: #c0392b; }
+
+    #loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      font-size: 1rem;
+      color: #888;
+    }
+
+    #error-msg {
+      display: none;
+      background: #fde8e8;
+      color: #c0392b;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+
+    #dashboard { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CGM Issues Dashboard — GoodFlip / TatvaCare</h1>
+  <span id="last-updated"></span>
+</header>
+
+<div class="controls">
+  <label for="from-date">Week starting:</label>
+  <input type="date" id="from-date" />
+  <button class="btn" id="load-btn" onclick="loadData()">Load</button>
+  <div id="status-bar">Select a date and click Load</div>
+</div>
+
+<div class="main">
+  <div id="error-msg"></div>
+  <div id="loading" style="display:none">Fetching tickets from Freshdesk...</div>
+  <div id="dashboard">
+
+    <!-- Summary cards -->
+    <div class="cards">
+      <div class="card"><div class="label">Total CGM Tickets</div><div class="value" id="c-total">—</div></div>
+      <div class="card green"><div class="label">Unique Issues</div><div class="value" id="c-unique">—</div><div class="sub">excl. duplicates</div></div>
+      <div class="card orange"><div class="label">Duplicates</div><div class="value" id="c-dups">—</div></div>
+      <div class="card red"><div class="label">Unassigned</div><div class="value" id="c-unassigned">—</div></div>
+      <div class="card purple"><div class="label">Waiting on Customer</div><div class="value" id="c-waiting">—</div></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts">
+      <div class="chart-box">
+        <h3>Daily Volume</h3>
+        <canvas id="chart-daily"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Tech vs Non-Tech</h3>
+        <canvas id="chart-techsplit"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Issue Type Breakdown</h3>
+        <canvas id="chart-issues"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Status Distribution</h3>
+        <canvas id="chart-status"></canvas>
+      </div>
+    </div>
+
+    <!-- Ticket Table -->
+    <div class="table-box">
+      <h3>All CGM Tickets <span id="table-count" style="font-weight:400;color:#aaa;"></span></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#ID</th>
+            <th>Subject</th>
+            <th>Issue Type (L3)</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Assigned</th>
+            <th>Tags</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="ticket-table"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const STATUS_MAP = { 2: 'Open', 3: 'Pending', 4: 'Resolved', 5: 'Resolved', 6: 'Waiting', 7: 'Pending' };
+  const STATUS_CLASS = { 2: 'open', 3: 'pending', 4: 'resolved', 5: 'resolved', 6: 'waiting', 7: 'pending' };
+
+  let charts = {};
+
+  // Default to current Monday (week start)
+  (function setDefaultDate() {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+    document.getElementById('from-date').value = monday.toISOString().slice(0, 10);
+  })();
+
+  function destroyChart(id) {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  }
+
+  function makeChart(id, config) {
+    destroyChart(id);
+    charts[id] = new Chart(document.getElementById(id), config);
+  }
+
+  async function loadData() {
+    const from = document.getElementById('from-date').value;
+    if (!from) return alert('Please select a start date.');
+
+    const btn = document.getElementById('load-btn');
+    btn.disabled = true;
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('status-bar').textContent = 'Loading...';
+
+    try {
+      const res = await fetch(`/api/tickets?from=${from}T00:00:00Z`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const { tickets } = await res.json();
+
+      render(tickets, from);
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      document.getElementById('status-bar').textContent = `${tickets.length} CGM tickets loaded from ${from}`;
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      const err = document.getElementById('error-msg');
+      err.textContent = `Error: ${e.message}`;
+      err.style.display = 'block';
+      document.getElementById('status-bar').textContent = 'Failed to load data.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function counter(arr, key) {
+    return arr.reduce((acc, t) => {
+      const v = t[key] || 'Unknown';
+      acc[v] = (acc[v] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  function render(tickets, from) {
+    const dups = tickets.filter(t => t.tags.includes('Duplicate'));
+    const unassigned = tickets.filter(t => !t.responder_id);
+    const waiting = tickets.filter(t => t.status === 6);
+
+    // Cards
+    document.getElementById('c-total').textContent = tickets.length;
+    document.getElementById('c-unique').textContent = tickets.length - dups.length;
+    document.getElementById('c-dups').textContent = dups.length;
+    document.getElementById('c-unassigned').textContent = unassigned.length;
+    document.getElementById('c-waiting').textContent = waiting.length;
+
+    // Daily volume chart
+    const byDate = counter(tickets, 'created_at');
+    const dateMap = {};
+    tickets.forEach(t => {
+      const d = t.created_at.slice(0, 10);
+      dateMap[d] = (dateMap[d] || 0) + 1;
+    });
+    const sortedDates = Object.keys(dateMap).sort();
+    makeChart('chart-daily', {
+      type: 'bar',
+      data: {
+        labels: sortedDates.map(d => new Date(d).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })),
+        datasets: [{
+          label: 'CGM Tickets',
+          data: sortedDates.map(d => dateMap[d]),
+          backgroundColor: '#1e3a5f',
+          borderRadius: 5,
+        }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // Tech split donut
+    const techSplit = counter(tickets, 'level2');
+    makeChart('chart-techsplit', {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(techSplit),
+        datasets: [{ data: Object.values(techSplit), backgroundColor: ['#1e3a5f', '#e67e22', '#95a5a6'], borderWidth: 2 }]
+      },
+      options: { plugins: { legend: { position: 'bottom' } }, cutout: '60%' }
+    });
+
+    // Issue type horizontal bar
+    const issueMap = counter(tickets, 'level3');
+    const sortedIssues = Object.entries(issueMap).sort((a, b) => b[1] - a[1]);
+    makeChart('chart-issues', {
+      type: 'bar',
+      data: {
+        labels: sortedIssues.map(([k]) => k),
+        datasets: [{
+          label: 'Tickets',
+          data: sortedIssues.map(([, v]) => v),
+          backgroundColor: '#3498db',
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+
+    // Status donut
+    const statusMap = {};
+    tickets.forEach(t => {
+      const s = STATUS_MAP[t.status] || 'Other';
+      statusMap[s] = (statusMap[s] || 0) + 1;
+    });
+    makeChart('chart-status', {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(statusMap),
+        datasets: [{ data: Object.values(statusMap), backgroundColor: ['#27ae60', '#3498db', '#e67e22', '#8e44ad'], borderWidth: 2 }]
+      },
+      options: { plugins: { legend: { position: 'bottom' } }, cutout: '60%' }
+    });
+
+    // Table
+    const tbody = document.getElementById('ticket-table');
+    tbody.innerHTML = '';
+    document.getElementById('table-count').textContent = `(${tickets.length} tickets)`;
+
+    [...tickets].sort((a, b) => b.id - a.id).forEach(t => {
+      const isDup = t.tags.includes('Duplicate');
+      const statusLabel = STATUS_MAP[t.status] || t.status;
+      const statusCls = STATUS_CLASS[t.status] || '';
+      const techCls = t.level2 === 'Tech Issue' ? 'tech' : 'nontech';
+      const created = new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+      tbody.innerHTML += `<tr>
+        <td><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
+        <td>${t.level3 || '—'}</td>
+        <td><span class="badge ${techCls}">${t.level2 || '—'}</span></td>
+        <td><span class="badge ${statusCls}">${statusLabel}</span></td>
+        <td>${t.responder_id ? '✓' : '<span style="color:#e74c3c;">✗</span>'}</td>
+        <td>${isDup ? '<span class="badge dup">Duplicate</span>' : (t.tags.join(', ') || '—')}</td>
+        <td style="white-space:nowrap;">${created}</td>
+      </tr>`;
+    });
+  }
+</script>
+
+</body>
+</html>
