@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,22 +11,28 @@ module.exports = async (req, res) => {
   if (!question) return res.status(400).json({ error: "Missing question" });
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
-      systemInstruction: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
 You analyze Freshdesk ticket data and provide concise, actionable insights.
-Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`,
+Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`
+        },
+        {
+          role: "user",
+          content: `Here is the current CGM Tech ticket data:\n\n${JSON.stringify(summary, null, 2)}\n\nQuestion: ${question}`
+        }
+      ]
     });
 
-    const prompt = `Here is the current CGM Tech ticket data:\n\n${JSON.stringify(summary, null, 2)}\n\nQuestion: ${question}`;
-
-    const result = await model.generateContent(prompt);
-    const answer = result.response.text();
-
+    const answer = completion.choices[0]?.message?.content || "No response";
     return res.status(200).json({ answer });
   } catch (err) {
-    console.error("Gemini error:", err);
+    console.error("Groq error:", err);
     return res.status(500).json({ error: err.message || "Unknown error" });
   }
 };
