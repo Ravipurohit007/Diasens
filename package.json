@@ -6,6 +6,7 @@
     "dev": "vercel dev"
   },
   "dependencies": {
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "@anthropic-ai/sdk": "^0.39.0"
   }
 }
