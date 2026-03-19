@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "node-fetch": "^2.7.0",
-    "@anthropic-ai/sdk": "^0.39.0"
+    "@google/generative-ai": "^0.21.0"
   }
 }

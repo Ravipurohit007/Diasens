@@ -1,4 +1,4 @@
-const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,24 +10,18 @@ module.exports = async (req, res) => {
   const { question, summary } = req.body || {};
   if (!question) return res.status(400).json({ error: "Missing question" });
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const systemPrompt = `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    systemInstruction: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
 You analyze Freshdesk ticket data and provide concise, actionable insights.
-Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`;
-
-  const userPrompt = `Here is the current CGM Tech ticket data:
-
-${JSON.stringify(summary, null, 2)}
-
-Question: ${question}`;
-
-  const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`,
   });
 
-  return res.status(200).json({ answer: message.content[0].text });
+  const prompt = `Here is the current CGM Tech ticket data:\n\n${JSON.stringify(summary, null, 2)}\n\nQuestion: ${question}`;
+
+  const result = await model.generateContent(prompt);
+  const answer = result.response.text();
+
+  return res.status(200).json({ answer });
 };
