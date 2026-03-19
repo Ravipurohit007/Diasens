@@ -643,7 +643,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q, summary: currentSummary })
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(`API error: ${res.status} — ${errBody.error || 'unknown'}`);
+      }
       const { answer } = await res.json();
       resp.textContent   = answer;
       resp.style.display = 'block';
