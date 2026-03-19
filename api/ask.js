@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.0-flash-lite",
       systemInstruction: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
 You analyze Freshdesk ticket data and provide concise, actionable insights.
 Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`,
