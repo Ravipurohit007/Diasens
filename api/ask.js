@@ -10,18 +10,23 @@ module.exports = async (req, res) => {
   const { question, summary } = req.body || {};
   if (!question) return res.status(400).json({ error: "Missing question" });
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    systemInstruction: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: `You are a support analytics assistant for GoodFlip / TatvaCare's CGM (Continuous Glucose Monitor) support team.
 You analyze Freshdesk ticket data and provide concise, actionable insights.
 Be specific with numbers. Use bullet points where helpful. Keep responses under 200 words.`,
-  });
+    });
 
-  const prompt = `Here is the current CGM Tech ticket data:\n\n${JSON.stringify(summary, null, 2)}\n\nQuestion: ${question}`;
+    const prompt = `Here is the current CGM Tech ticket data:\n\n${JSON.stringify(summary, null, 2)}\n\nQuestion: ${question}`;
 
-  const result = await model.generateContent(prompt);
-  const answer = result.response.text();
+    const result = await model.generateContent(prompt);
+    const answer = result.response.text();
 
-  return res.status(200).json({ answer });
+    return res.status(200).json({ answer });
+  } catch (err) {
+    console.error("Gemini error:", err);
+    return res.status(500).json({ error: err.message || "Unknown error" });
+  }
 };
