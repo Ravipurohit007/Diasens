@@ -102,6 +102,7 @@
     .card.orange { border-left-color: #e67e22; }
     .card.purple { border-left-color: #8e44ad; }
     .card.teal   { border-left-color: #16a085; }
+    .card.blue   { border-left-color: #2980b9; }
     .card .label { font-size: 0.73rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .card .value { font-size: 2rem; font-weight: 700; color: #1a1a2e; }
     .card .sub   { font-size: 0.73rem; color: #aaa; margin-top: 4px; }
@@ -323,6 +324,11 @@
         <div class="value" id="c-avgwait">—</div>
         <div class="sub">hrs (waiting tickets)</div>
       </div>
+      <div class="card blue">
+        <div class="label">Avg Closure Time</div>
+        <div class="value" id="c-avgclose">—</div>
+        <div class="sub">hrs (resolved tickets)</div>
+      </div>
     </div>
 
     <!-- Charts -->
@@ -489,12 +495,19 @@
       ? (waiting.reduce((s, t) => s + (now - new Date(t.created_at)) / 36e5, 0) / waiting.length).toFixed(1)
       : '—';
 
+    // Avg closure hours for resolved tickets
+    const resolved = tickets.filter(t => t.resolved_at);
+    const avgClose = resolved.length
+      ? (resolved.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolved.length).toFixed(1)
+      : '—';
+
     // Cards
     document.getElementById('c-total').textContent   = tickets.length;
     document.getElementById('c-unique').textContent  = tickets.length - dups.length;
     document.getElementById('c-dups').textContent    = dups.length;
     document.getElementById('c-waiting').textContent = waiting.length;
-    document.getElementById('c-avgwait').textContent = avgWait === '—' ? '—' : `${avgWait}h`;
+    document.getElementById('c-avgwait').textContent  = avgWait === '—' ? '—' : `${avgWait}h`;
+    document.getElementById('c-avgclose').textContent = avgClose === '—' ? '—' : `${avgClose}h`;
 
     // ----- Daily volume bar -----
     const dateMap = {};

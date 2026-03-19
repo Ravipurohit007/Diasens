@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
       level3: t.custom_fields?.cf_level_3941749 || null,
       mobile: t.custom_fields?.cf_registered_mobile_number || null,
       type: t.type,
+      resolved_at: t.stats?.resolved_at || null,
     }));
 
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate"); // 5-min cache
