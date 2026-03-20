@@ -103,6 +103,7 @@
     .card.purple { border-left-color: #8e44ad; }
     .card.teal   { border-left-color: #16a085; }
     .card.blue   { border-left-color: #2980b9; }
+    .card.red    { border-left-color: #e74c3c; }
     .card .label { font-size: 0.73rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .card .value { font-size: 2rem; font-weight: 700; color: #1a1a2e; }
     .card .sub   { font-size: 0.73rem; color: #aaa; margin-top: 4px; }
@@ -281,8 +282,10 @@
   </div>
 
   <div id="week-picker" style="display:flex;align-items:center;gap:8px;">
-    <label for="from-date">Starting:</label>
+    <label for="from-date">From:</label>
     <input type="date" id="from-date" />
+    <label for="to-date">To:</label>
+    <input type="date" id="to-date" />
   </div>
 
   <div id="month-picker" style="display:none;align-items:center;gap:8px;">
@@ -315,6 +318,10 @@
         <div class="label">Duplicates</div>
         <div class="value" id="c-dups">—</div>
       </div>
+      <div class="card red">
+        <div class="label">Replacements</div>
+        <div class="value" id="c-replacements">—</div>
+      </div>
       <div class="card purple">
         <div class="label">Waiting on Customer</div>
         <div class="value" id="c-waiting">—</div>
@@ -345,6 +352,18 @@
         <h3>Issue Type Breakdown</h3>
         <canvas id="chart-issues"></canvas>
       </div>
+    </div>
+
+    <!-- Drill-down Panel -->
+    <div id="drilldown-panel" style="display:none;" class="table-box">
+      <h3 id="drilldown-title">Issue Drill-down</h3>
+      <div id="drilldown-stats" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <table>
+        <thead>
+          <tr><th>#ID</th><th>Subject</th><th>Status</th><th>Tags</th><th>Created</th><th>Closure (hrs)</th></tr>
+        </thead>
+        <tbody id="drilldown-table"></tbody>
+      </table>
     </div>
 
     <!-- Ticket Table -->
@@ -390,7 +409,7 @@
 <script>
   Chart.register(ChartDataLabels);
 
-  const STATUS_MAP   = { 2:'Open', 3:'Pending', 4:'Resolved', 5:'Resolved', 6:'Waiting', 7:'Pending' };
+  const STATUS_MAP   = { 2:'Open', 3:'Pending', 4:'Resolved', 5:'Resolved', 6:'Waiting on Customer', 7:'Pending' };
   const STATUS_CLASS = { 2:'open', 3:'pending', 4:'resolved', 5:'resolved', 6:'waiting', 7:'pending' };
 
   let charts = {};
@@ -404,7 +423,10 @@
     const diff = day === 0 ? -6 : 1 - day;
     const monday = new Date(today);
     monday.setDate(today.getDate() + diff);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
     document.getElementById('from-date').value = monday.toISOString().slice(0, 10);
+    document.getElementById('to-date').value   = sunday.toISOString().slice(0, 10);
     document.getElementById('from-month').value = today.toISOString().slice(0, 7);
   })();
 
@@ -416,14 +438,24 @@
     document.getElementById('month-picker').style.display = p === 'month' ? 'flex' : 'none';
   }
 
-  function getFromDate() {
+  function getDateRange() {
     if (currentPeriod === 'week') {
-      const v = document.getElementById('from-date').value;
-      return v ? `${v}T00:00:00Z` : null;
+      const f = document.getElementById('from-date').value;
+      const t = document.getElementById('to-date').value;
+      if (!f || !t) return null;
+      return { from: `${f}T00:00:00Z`, to: `${t}T23:59:59Z`, label: `${fmtDate(f)} – ${fmtDate(t)}` };
     } else {
       const v = document.getElementById('from-month').value;
-      return v ? `${v}-01T00:00:00Z` : null;
+      if (!v) return null;
+      const [y, m] = v.split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      const toStr = `${v}-${String(lastDay).padStart(2,'0')}`;
+      return { from: `${v}-01T00:00:00Z`, to: `${toStr}T23:59:59Z`, label: `${fmtDate(v+'-01')} – ${fmtDate(toStr)}` };
     }
+  }
+
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   function destroyChart(id) {
@@ -450,8 +482,8 @@
   };
 
   async function loadData() {
-    const from = getFromDate();
-    if (!from) return alert('Please select a valid date.');
+    const range = getDateRange();
+    if (!range) return alert('Please select a valid date range.');
 
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
@@ -462,18 +494,18 @@
     document.getElementById('status-bar').textContent = 'Loading...';
 
     try {
-      const res = await fetch(`/api/tickets?from=${from}`);
+      const res = await fetch(`/api/tickets?from=${range.from}&to=${range.to}`);
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const { tickets: all } = await res.json();
 
       // Keep only tech tickets
       const tickets = all.filter(t => t.level2 === 'Tech Issue');
 
-      render(tickets, from);
+      render(tickets, range);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('last-updated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
-      document.getElementById('status-bar').textContent = `${tickets.length} tech CGM tickets · period from ${from.slice(0,10)}`;
+      document.getElementById('status-bar').textContent = `${tickets.length} tech CGM tickets · ${range.label}`;
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
       const err = document.getElementById('error-msg');
@@ -485,9 +517,13 @@
     }
   }
 
-  function render(tickets, from) {
-    const dups     = tickets.filter(t => t.tags.includes('Duplicate'));
-    const waiting  = tickets.filter(t => t.status === 6);
+  let allTickets = [];
+
+  function render(tickets, range) {
+    allTickets = tickets;
+    const dups        = tickets.filter(t => t.tags.includes('Duplicate'));
+    const replacements = tickets.filter(t => t.tags.includes('Replacement'));
+    const waiting     = tickets.filter(t => t.status === 6);
 
     // Avg wait hours for waiting tickets
     const now = Date.now();
@@ -495,19 +531,20 @@
       ? (waiting.reduce((s, t) => s + (now - new Date(t.created_at)) / 36e5, 0) / waiting.length).toFixed(1)
       : '—';
 
-    // Avg closure hours for resolved tickets
-    const resolved = tickets.filter(t => t.resolved_at);
+    // Avg closure hours for resolved non-duplicate tickets
+    const resolved = tickets.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
     const avgClose = resolved.length
       ? (resolved.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolved.length).toFixed(1)
       : '—';
 
     // Cards
-    document.getElementById('c-total').textContent   = tickets.length;
-    document.getElementById('c-unique').textContent  = tickets.length - dups.length;
-    document.getElementById('c-dups').textContent    = dups.length;
-    document.getElementById('c-waiting').textContent = waiting.length;
-    document.getElementById('c-avgwait').textContent  = avgWait === '—' ? '—' : `${avgWait}h`;
-    document.getElementById('c-avgclose').textContent = avgClose === '—' ? '—' : `${avgClose}h`;
+    document.getElementById('c-total').textContent        = tickets.length;
+    document.getElementById('c-unique').textContent       = tickets.length - dups.length;
+    document.getElementById('c-dups').textContent         = dups.length;
+    document.getElementById('c-replacements').textContent = replacements.length;
+    document.getElementById('c-waiting').textContent      = waiting.length;
+    document.getElementById('c-avgwait').textContent      = avgWait === '—' ? '—' : `${avgWait}h`;
+    document.getElementById('c-avgclose').textContent     = avgClose === '—' ? '—' : `${avgClose}h`;
 
     // ----- Daily volume bar -----
     const dateMap = {};
@@ -585,14 +622,22 @@
           label: 'Tickets',
           data: sortedIssues.map(([, v]) => v),
           backgroundColor: '#3498db',
+          hoverBackgroundColor: '#1e3a5f',
           borderRadius: 4,
         }]
       },
       options: {
         indexAxis: 'y',
+        onClick: (evt, elements) => {
+          if (elements.length > 0) {
+            const label = sortedIssues[elements[0].index][0];
+            showDrilldown(label);
+          }
+        },
         plugins: {
           legend: { display: false },
-          datalabels: { ...DATALABEL_OUTSIDE, color: '#2c3e50' }
+          datalabels: { ...DATALABEL_OUTSIDE, color: '#2c3e50' },
+          tooltip: { callbacks: { footer: () => 'Click to drill down' } }
         },
         scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
@@ -600,10 +645,11 @@
 
     // ----- Build summary for Q&A -----
     currentSummary = {
-      period_from: from.slice(0, 10),
+      period: range.label,
       total_tech_tickets: tickets.length,
       unique_issues: tickets.length - dups.length,
       duplicates: dups.length,
+      replacements: replacements.length,
       waiting_on_customer: waiting.length,
       avg_wait_hours: avgWait,
       resolved_tickets: resolved.length,
@@ -635,6 +681,52 @@
         <td style="white-space:nowrap;">${created}</td>
       </tr>`;
     });
+  }
+
+  function showDrilldown(issueType) {
+    const subset = allTickets.filter(t => (t.level3 || 'Unknown') === issueType);
+    const panel  = document.getElementById('drilldown-panel');
+    document.getElementById('drilldown-title').textContent = `Drill-down: ${issueType} (${subset.length} tickets)`;
+
+    // Status breakdown
+    const statusCount = {};
+    subset.forEach(t => {
+      const s = STATUS_MAP[t.status] || 'Other';
+      statusCount[s] = (statusCount[s] || 0) + 1;
+    });
+    const resolvedSub = subset.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
+    const avgCloseSub = resolvedSub.length
+      ? (resolvedSub.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolvedSub.length).toFixed(1)
+      : '—';
+
+    document.getElementById('drilldown-stats').innerHTML =
+      Object.entries(statusCount).map(([s, n]) =>
+        `<span style="background:#f0f4fa;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${n}</strong> ${s}</span>`
+      ).join('') +
+      `<span style="background:#eafaf1;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${avgCloseSub}h</strong> Avg Closure</span>`;
+
+    // Ticket list
+    const tbody = document.getElementById('drilldown-table');
+    tbody.innerHTML = '';
+    [...subset].sort((a, b) => b.id - a.id).forEach(t => {
+      const statusLabel = STATUS_MAP[t.status] || t.status;
+      const statusCls   = STATUS_CLASS[t.status] || '';
+      const created = new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+      const closureHrs = t.resolved_at
+        ? ((new Date(t.resolved_at) - new Date(t.created_at)) / 36e5).toFixed(1)
+        : '—';
+      tbody.innerHTML += `<tr>
+        <td><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
+        <td><span class="badge ${statusCls}">${statusLabel}</span></td>
+        <td>${t.tags.join(', ') || '—'}</td>
+        <td style="white-space:nowrap;">${created}</td>
+        <td>${closureHrs === '—' ? '—' : `${closureHrs}h`}</td>
+      </tr>`;
+    });
+
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // Q&A

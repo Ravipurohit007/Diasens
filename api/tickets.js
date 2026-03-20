@@ -38,19 +38,20 @@ module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   try {
-    const { from } = req.query;
+    const { from, to } = req.query;
     if (!from) {
       return res.status(400).json({ error: "Missing 'from' query param (ISO date)" });
     }
 
     const all = await fetchAllTickets(from);
 
-    // Filter to CGM Issue tickets created on/after the from date
+    // Filter to CGM Issue tickets created within the date range
     const cgm = all.filter((t) => {
       const cf = t.custom_fields || {};
       const isCGM = cf.cf_level_1357202 === "CGM Issue";
-      const created = t.created_at && t.created_at >= from;
-      return isCGM && created;
+      const createdAfter = t.created_at && t.created_at >= from;
+      const createdBefore = !to || t.created_at <= to;
+      return isCGM && createdAfter && createdBefore;
     });
 
     // Shape the response
