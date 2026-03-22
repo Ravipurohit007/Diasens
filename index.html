@@ -26,6 +26,12 @@
     }
     header h1 { font-size: 1.3rem; font-weight: 600; }
     header span { font-size: 0.82rem; opacity: 0.65; }
+    .brand-btn {
+      padding: 6px 16px; border-radius: 6px; border: 1.5px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.12); color: white; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .brand-btn:hover { background: rgba(255,255,255,0.25); }
 
     .controls {
       background: white;
@@ -316,7 +322,11 @@
 
 <header>
   <h1>CGM Tech Issues Dashboard — GoodFlip / TatvaCare</h1>
-  <span id="last-updated"></span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="btn-diasens" class="brand-btn">Diasens</button>
+    <button id="btn-goodflip" class="brand-btn">Goodflip</button>
+    <span id="last-updated" style="font-size:0.78rem;opacity:0.6;margin-left:8px;"></span>
+  </div>
 </header>
 
 <div class="controls">
@@ -339,7 +349,6 @@
   </div>
 
   <button class="btn" id="load-btn" onclick="loadData()">Load</button>
-  <div id="status-bar">Select a period and click Load</div>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
     <input type="text" id="search-input" placeholder="Search ticket # or email..." style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;outline:none;width:230px;" onfocus="this.style.borderColor='#1e3a5f'" onblur="this.style.borderColor='#ccc'" onkeydown="if(event.key==='Enter')searchTickets()" />
     <button class="btn" onclick="searchTickets()">Search</button>
@@ -425,6 +434,22 @@
       </div>
     </div>
 
+    <!-- Permanently Fixed Issues -->
+    <div class="wins-box">
+      <h3>✅ Permanently Fixed Issues</h3>
+      <p class="wins-sub">These issues have been permanently resolved at the product/firmware level and should no longer appear in tickets.</p>
+      <div class="wins-grid">
+        <div class="win-item">
+          <div class="win-title">Error 2 — Sensor/Session Error</div>
+          <div class="win-detail">Being addressed at the product & firmware level. Replacement protocol has been updated. Tickets for this error should reduce significantly.</div>
+        </div>
+        <div class="win-item">
+          <div class="win-title">No Readings / Readings Not Updating</div>
+          <div class="win-detail">Tech team implementing a clear in-app message to guide users on Hard Sync when readings stop. Will reduce support tickets for Bluetooth range and transmission issues.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Charts -->
     <div class="charts">
       <div class="chart-box">
@@ -456,35 +481,21 @@
     <!-- Ticket Table -->
     <div class="table-box">
       <h3>Tech Tickets <span id="table-count" style="font-weight:400;color:#aaa;"></span></h3>
-      <table>
-        <thead>
-          <tr>
-            <th>#ID</th>
-            <th>Subject</th>
-            <th>Issue Type (L3)</th>
-            <th>Status</th>
-            <th>Assigned</th>
-            <th>Tags</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody id="ticket-table"></tbody>
-      </table>
-    </div>
-
-    <!-- Permanently Fixed Issues -->
-    <div class="wins-box">
-      <h3>✅ Permanently Fixed Issues</h3>
-      <p class="wins-sub">These issues have been permanently resolved at the product/firmware level and should no longer appear in tickets.</p>
-      <div class="wins-grid">
-        <div class="win-item">
-          <div class="win-title">Error 2 — Sensor/Session Error</div>
-          <div class="win-detail">Being addressed at the product & firmware level. Replacement protocol has been updated. Tickets for this error should reduce significantly.</div>
-        </div>
-        <div class="win-item">
-          <div class="win-title">No Readings / Readings Not Updating</div>
-          <div class="win-detail">Tech team implementing a clear in-app message to guide users on Hard Sync when readings stop. Will reduce support tickets for Bluetooth range and transmission issues.</div>
-        </div>
+      <div style="max-height:340px;overflow-y:auto;">
+        <table>
+          <thead style="position:sticky;top:0;z-index:1;">
+            <tr>
+              <th>#ID</th>
+              <th>Subject</th>
+              <th>Issue Type (L3)</th>
+              <th>Status</th>
+              <th>Assigned</th>
+              <th>Tags</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="ticket-table"></tbody>
+        </table>
       </div>
     </div>
 
@@ -701,7 +712,6 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('last-updated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
-      document.getElementById('status-bar').textContent = `${tickets.length} tech CGM tickets · ${range.label}`;
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
       const err = document.getElementById('error-msg');
@@ -770,7 +780,13 @@
       options: {
         plugins: {
           legend: { display: false },
-          datalabels: { ...DATALABEL_OUTSIDE, color: '#1e3a5f' }
+          datalabels: {
+            color: '#fff',
+            anchor: 'center',
+            align: 'center',
+            font: { weight: 'bold', size: 12 },
+            formatter: v => v > 0 ? v : ''
+          }
         },
         scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
@@ -841,11 +857,15 @@
         },
         plugins: {
           legend: { display: false },
-          datalabels: { ...DATALABEL_OUTSIDE, color: '#2c3e50' },
+          datalabels: {
+            color: '#fff',
+            anchor: 'center',
+            align: 'center',
+            font: { weight: 'bold', size: 11 },
+            formatter: v => v > 0 ? v : ''
+          },
           tooltip: {
-            callbacks: {
-              footer: () => '👆 Click bar to drill down'
-            }
+            callbacks: { footer: () => '👆 Click bar to drill down' }
           }
         },
         scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
@@ -960,10 +980,10 @@
   function searchTickets() {
     const raw = document.getElementById('search-input').value.trim();
     if (!raw) return;
-    if (!allCGMTickets.length) return alert('Please load ticket data first.');
+    if (!allCGMTickets.length) return alert('Please load ticket data first, then search.');
 
-    const q = raw.replace(/^#/, '').toLowerCase();
-    const panel   = document.getElementById('search-panel');
+    const q      = raw.replace(/^#/, '').toLowerCase();
+    const modal   = document.getElementById('search-modal');
     const tbody   = document.getElementById('search-table');
     const countDiv = document.getElementById('search-count');
     const emptyDiv = document.getElementById('search-empty');
