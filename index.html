@@ -697,7 +697,6 @@
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('error-msg').style.display = 'none';
     document.getElementById('qa-response').style.display = 'none';
-    document.getElementById('status-bar').textContent = 'Loading...';
 
     try {
       const res = await fetch(`/api/tickets?from=${range.from}&to=${range.to}`);
@@ -717,7 +716,6 @@
       const err = document.getElementById('error-msg');
       err.textContent = `Error: ${e.message}`;
       err.style.display = 'block';
-      document.getElementById('status-bar').textContent = 'Failed to load.';
     } finally {
       btn.disabled = false;
     }
