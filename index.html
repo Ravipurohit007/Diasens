@@ -80,7 +80,7 @@
     .btn:hover { background: #16304f; }
     .btn:disabled { background: #aaa; cursor: not-allowed; }
 
-    #status-bar { font-size: 0.82rem; color: #888; margin-left: auto; }
+    #status-bar { font-size: 0.82rem; color: #888; }
 
     .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
 
@@ -340,6 +340,35 @@
 
   <button class="btn" id="load-btn" onclick="loadData()">Load</button>
   <div id="status-bar">Select a period and click Load</div>
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+    <input type="text" id="search-input" placeholder="Search ticket # or email..." style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;outline:none;width:230px;" onfocus="this.style.borderColor='#1e3a5f'" onblur="this.style.borderColor='#ccc'" onkeydown="if(event.key==='Enter')searchTickets()" />
+    <button class="btn" onclick="searchTickets()">Search</button>
+  </div>
+</div>
+
+<!-- Search Results Panel (outside dashboard, always accessible) -->
+<div id="search-panel" style="display:none;background:white;border-top:2px solid #1e3a5f;padding:16px 32px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span id="search-count" style="font-size:0.85rem;font-weight:600;color:#1e3a5f;"></span>
+    <button onclick="clearSearch()" style="background:none;border:none;cursor:pointer;color:#888;font-size:0.82rem;">✕ Close</button>
+  </div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
+      <thead>
+        <tr style="background:#f7f8fa;border-bottom:2px solid #e0e0e0;">
+          <th style="text-align:left;padding:8px 12px;color:#555;">#ID</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Subject</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Issue Type</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Status</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Customer</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Email</th>
+          <th style="text-align:left;padding:8px 12px;color:#555;">Created</th>
+        </tr>
+      </thead>
+      <tbody id="search-table"></tbody>
+    </table>
+  </div>
+  <div id="search-empty" style="display:none;color:#888;font-size:0.88rem;padding:10px 0;">No tickets found matching your search.</div>
 </div>
 
 <div class="main">
@@ -444,34 +473,14 @@
       <p class="wins-sub">These issues have been permanently resolved at the product/firmware level and should no longer appear in tickets.</p>
       <div class="wins-grid">
         <div class="win-item">
-          <div class="win-title">Error 2 — Sensor Failure</div>
-          <div class="win-detail">Root cause addressed in firmware v2.4. Replacement protocol updated.</div>
+          <div class="win-title">Error 2 — Sensor/Session Error</div>
+          <div class="win-detail">Being addressed at the product & firmware level. Replacement protocol has been updated. Tickets for this error should reduce significantly.</div>
         </div>
         <div class="win-item">
-          <div class="win-title">No Reading / Blank Reading</div>
-          <div class="win-detail">Sensor adhesion issue resolved with new applicator design (batch Q1 2026+).</div>
+          <div class="win-title">No Readings / Readings Not Updating</div>
+          <div class="win-detail">Tech team implementing a clear in-app message to guide users on Hard Sync when readings stop. Will reduce support tickets for Bluetooth range and transmission issues.</div>
         </div>
       </div>
-    </div>
-
-    <!-- Ticket Search -->
-    <div class="search-box">
-      <h3>🔍 Ticket Search</h3>
-      <div class="search-row">
-        <input type="text" id="search-input" placeholder="Enter ticket #ID or customer email address..." />
-        <button class="btn" onclick="searchTickets()">Search</button>
-        <button class="btn" style="background:#888;" onclick="clearSearch()">Clear</button>
-      </div>
-      <div id="search-results" style="margin-top:14px;display:none;">
-        <div id="search-count" style="font-size:0.82rem;color:#888;margin-bottom:10px;"></div>
-        <table>
-          <thead>
-            <tr><th>#ID</th><th>Subject</th><th>Issue Type</th><th>Status</th><th>Customer</th><th>Email</th><th>Created</th></tr>
-          </thead>
-          <tbody id="search-table"></tbody>
-        </table>
-      </div>
-      <div id="search-empty" style="display:none;color:#888;font-size:0.88rem;margin-top:12px;">No tickets found.</div>
     </div>
 
     <!-- Q&A -->
@@ -498,25 +507,73 @@
 <script>
   Chart.register(ChartDataLabels);
 
-  // Error SOP — fill in details once shared
+  // Error SOP — sourced from CGM Device SOP document
   const ERROR_INFO = {
+    'No Readings': {
+      what: 'Sensor readings are not appearing in the app, or readings have stopped updating.',
+      why: 'Most commonly the user is out of Bluetooth range. Can also be caused by transmission failure between the transmitter and the app.',
+      fix: '1. Ensure user is within Bluetooth range of their phone. 2. Ask user to do a Hard Sync from the app. 3. Reset Bluetooth and reopen the Goodflip app. 4. Check stable internet (Wi-Fi or mobile data). 5. Re-establish connection and verify readings.',
+      prevent: 'Tech team is working on a clear in-app message to guide users on what to do and where to do it when readings stop.'
+    },
+    'No Reading': {
+      what: 'Sensor readings are not appearing in the app, or readings have stopped updating.',
+      why: 'Most commonly the user is out of Bluetooth range. Can also be caused by transmission failure between the transmitter and the app.',
+      fix: '1. Ensure user is within Bluetooth range of their phone. 2. Ask user to do a Hard Sync from the app. 3. Reset Bluetooth and reopen the Goodflip app. 4. Check stable internet (Wi-Fi or mobile data). 5. Re-establish connection and verify readings.',
+      prevent: 'Tech team is working on a clear in-app message to guide users on what to do and where to do it when readings stop.'
+    },
+    'Error 11': {
+      what: 'Error Noise — unstable signal from the sensor.',
+      why: 'Improper use or electrode breakage caused by body movement.',
+      fix: '1. Remove the transmitter, clean it, and reattach. 2. Gently press for 30 seconds. 3. Wait 1 hour for readings to stabilize. Replacement after 24 hours with Tracky Team verification.',
+      prevent: 'Educate users on correct sensor placement (behind arms & buttocks). Avoid strenuous exercise near sensor area.'
+    },
+    'Error 12': {
+      what: 'Error Sensitivity Attenuation — sensor sensitivity has reduced.',
+      why: 'Human body rejection reaction to the sensor.',
+      fix: 'Replace with a new sensor. Replacement after confirmation from Tracky Support Team.',
+      prevent: 'Advise correct placement. Monitor for early signs of body rejection (itching, redness).'
+    },
     'Error 13': {
-      what: 'Details coming soon — please share the SOP.',
-      why:  'Root cause to be documented.',
-      fix:  'Resolution steps to be added.',
-      prevent: 'Prevention measures to be added.'
+      what: 'Error Take Off — poor contact between sensor and transmitter.',
+      why: '1. Improper use causing poor connection. 2. Transmitter has been moved. 3. Adhesive tape coming off.',
+      fix: '1. Remove the transmitter, clean it, and reattach. 2. Gently press for 30 seconds. 3. Wait for readings to stabilize. Replacement after 24 hours with Tracky Team confirmation.',
+      prevent: 'Ensure tape is firmly applied. Avoid rubbing with towel or hitting sensor. Replace adhesive patch in summer months.'
+    },
+    'Error 14': {
+      what: 'Error Breakage — physical electrode breakage.',
+      why: 'Electrode breakage caused by body movement or mishandling.',
+      fix: 'Remove transmitter and check if electrode shows breakage. Customer must provide proper image. Replacement only in genuine cases (not user-caused).',
+      prevent: 'Educate users to avoid physical impact, squeezing, or twisting skin near sensor. Do not apply pressure while sleeping.'
     },
     'Error 15': {
-      what: 'Details coming soon — please share the SOP.',
-      why:  'Root cause to be documented.',
-      fix:  'Resolution steps to be added.',
-      prevent: 'Prevention measures to be added.'
+      what: 'Error Touch — poor connection between sensor and transmitter.',
+      why: 'Poor physical connection between the sensor body and the transmitter.',
+      fix: '1. Remove the transmitter, clean it, and reattach. 2. Listen for the click sound to confirm correct placement. Replacement after Tracky Team confirmation.',
+      prevent: 'Train users to always listen for the click when attaching transmitter. Check connection regularly.'
+    },
+    'Error 16': {
+      what: 'Error Flooding Water — waterproofing failure.',
+      why: 'Water ingress into the sensor/transmitter beyond IP58 rating.',
+      fix: 'Dry the sensor and transmitter with a cloth. Wait for readings to return to normal. Replacement after 48 hours observation with Tracky Team approval.',
+      prevent: 'Educate users: IP58 rating means max 1.5m depth for 30 min. Avoid swimming, sauna, jacuzzi, steam baths, and ice baths.'
     },
     'Error 103': {
-      what: 'Details coming soon — please share the SOP.',
-      why:  'Root cause to be documented.',
-      fix:  'Resolution steps to be added.',
-      prevent: 'Prevention measures to be added.'
+      what: 'Error Current Small — insufficient electrical signal from sensor.',
+      why: 'Improper use, human body rejection reaction, or excessive body movement.',
+      fix: '1. Remove transmitter, clean, reattach, press firmly for 30 seconds. 2. Wait 1 hour for readings to stabilize. 3. Perform Reconnection Journey in the app if readings don\'t appear. Replacement if Reconnection fails, after Tracky Team confirmation.',
+      prevent: 'Same as Error 11/13. Replacement only if customer contacts before Day 10 of sensor use.'
+    },
+    'Error 104': {
+      what: 'Transmitter Binding Fail — transmitter cannot connect to sensor or phone.',
+      why: '1. Transmitter not fetching data from sensor. 2. Transmitter not connecting to mobile phone.',
+      fix: '1. Uninstall and reinstall the Goodflip app. 2. Charge transmitter until blue light appears. 3. Perform Reconnection in the app. Replacement for transmitter if same error persists.',
+      prevent: 'Ensure transmitter is fully charged before use. Do NOT charge during an active 14-day session.'
+    },
+    'Error 2': {
+      what: 'Sensor failure or session error.',
+      why: 'See SOP for full details. Often related to sensor damage or improper session start.',
+      fix: 'Follow 4-step troubleshooting: 1. Product placement check. 2. Bluetooth & connectivity check. 3. Hardware re-check (remove, clean, reattach). 4. Escalate to Tatva Tech Team if unresolved.',
+      prevent: 'Being addressed at product/firmware level. Replacement protocol updated.'
     },
   };
 
@@ -636,8 +693,9 @@
 
   function render(tickets, range) {
     allTickets = tickets;
-    const dups         = tickets.filter(t => t.tags.includes('Duplicate'));
-    const replacements = tickets.filter(t => t.tags.includes('Replacement'));
+    const hasTag = (t, word) => t.tags.some(tag => tag.toLowerCase() === word.toLowerCase());
+    const dups         = tickets.filter(t => hasTag(t, 'Duplicate'));
+    const replacements = tickets.filter(t => hasTag(t, 'Replacement'));
     const waiting      = tickets.filter(t => t.status === 6);
     const openTickets  = tickets.filter(t => t.status === 2);
     const closedTickets = tickets.filter(t => t.status === 5);
@@ -649,7 +707,7 @@
       : '—';
 
     // Avg closure hours for resolved non-duplicate tickets
-    const resolved = tickets.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
+    const resolved = tickets.filter(t => t.resolved_at && !hasTag(t, 'Duplicate'));
     const avgClose = resolved.length
       ? (resolved.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolved.length).toFixed(1)
       : '—';
@@ -784,7 +842,7 @@
     document.getElementById('table-count').textContent = `(${tickets.length})`;
 
     [...tickets].sort((a, b) => b.id - a.id).forEach(t => {
-      const isDup = t.tags.includes('Duplicate');
+      const isDup = hasTag(t, 'Duplicate');
       const statusLabel = STATUS_MAP[t.status] || t.status;
       const statusCls   = STATUS_CLASS[t.status] || '';
       const created = new Date(t.created_at).toLocaleDateString('en-IN', {
@@ -813,9 +871,10 @@
       const s = STATUS_MAP[t.status] || 'Other';
       statusCount[s] = (statusCount[s] || 0) + 1;
     });
-    const resolvedSub  = subset.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
-    const dupsSub      = subset.filter(t => t.tags.includes('Duplicate')).length;
-    const replaceSub   = subset.filter(t => t.tags.includes('Replacement')).length;
+    const hasTagL = (t, w) => t.tags.some(tag => tag.toLowerCase() === w.toLowerCase());
+    const resolvedSub  = subset.filter(t => t.resolved_at && !hasTagL(t, 'Duplicate'));
+    const dupsSub      = subset.filter(t => hasTagL(t, 'Duplicate')).length;
+    const replaceSub   = subset.filter(t => hasTagL(t, 'Replacement')).length;
     const avgCloseSub  = resolvedSub.length
       ? (resolvedSub.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolvedSub.length).toFixed(1)
       : '—';
@@ -867,51 +926,57 @@
   }
 
   function searchTickets() {
-    const q = document.getElementById('search-input').value.trim().toLowerCase();
-    if (!q) return;
+    const raw = document.getElementById('search-input').value.trim();
+    if (!raw) return;
     if (!allTickets.length) return alert('Please load ticket data first.');
 
-    const results = allTickets.filter(t =>
-      String(t.id) === q ||
-      (t.requester_email && t.requester_email.toLowerCase().includes(q)) ||
-      (t.mobile && t.mobile.includes(q))
-    );
+    const q = raw.replace(/^#/, '').toLowerCase();
+    const panel   = document.getElementById('search-panel');
+    const tbody   = document.getElementById('search-table');
+    const countDiv = document.getElementById('search-count');
+    const emptyDiv = document.getElementById('search-empty');
 
-    const resultsDiv  = document.getElementById('search-results');
-    const emptyDiv    = document.getElementById('search-empty');
-    const tbody       = document.getElementById('search-table');
-    const countDiv    = document.getElementById('search-count');
+    const results = allTickets.filter(t => {
+      const idMatch    = String(t.id).includes(q);
+      const emailMatch = t.requester_email && t.requester_email.toLowerCase().includes(q);
+      const mobileMatch = t.mobile && t.mobile.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      return idMatch || emailMatch || mobileMatch;
+    });
 
     tbody.innerHTML = '';
+    panel.style.display = 'block';
+
     if (results.length === 0) {
-      resultsDiv.style.display = 'none';
       emptyDiv.style.display = 'block';
+      countDiv.textContent = '';
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
 
     emptyDiv.style.display = 'none';
-    resultsDiv.style.display = 'block';
-    countDiv.textContent = `${results.length} ticket(s) found`;
+    countDiv.textContent = `${results.length} ticket(s) found for "${raw}"`;
 
     results.forEach(t => {
       const statusLabel = STATUS_MAP[t.status] || t.status;
       const statusCls   = STATUS_CLASS[t.status] || '';
       const created = new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      tbody.innerHTML += `<tr>
-        <td><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
-        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
-        <td>${t.level3 || '—'}</td>
-        <td><span class="badge ${statusCls}">${statusLabel}</span></td>
-        <td>${t.requester_name || '—'}</td>
-        <td>${t.requester_email || '—'}</td>
-        <td style="white-space:nowrap;">${created}</td>
+      tbody.innerHTML += `<tr style="border-bottom:1px solid #f0f0f0;">
+        <td style="padding:8px 12px;"><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
+        <td style="padding:8px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
+        <td style="padding:8px 12px;">${t.level3 || '—'}</td>
+        <td style="padding:8px 12px;"><span class="badge ${statusCls}">${statusLabel}</span></td>
+        <td style="padding:8px 12px;">${t.requester_name || '—'}</td>
+        <td style="padding:8px 12px;">${t.requester_email || '—'}</td>
+        <td style="padding:8px 12px;white-space:nowrap;">${created}</td>
       </tr>`;
     });
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function clearSearch() {
     document.getElementById('search-input').value = '';
-    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('search-panel').style.display = 'none';
+    document.getElementById('search-table').innerHTML = '';
     document.getElementById('search-empty').style.display = 'none';
   }
 
