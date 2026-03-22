@@ -431,7 +431,7 @@
         <canvas id="chart-status"></canvas>
       </div>
       <div class="chart-box" style="grid-column: 1 / -1;">
-        <h3>Issue Type Breakdown</h3>
+        <h3>Issue Type Breakdown <span style="font-weight:400;font-size:0.75rem;color:#aaa;text-transform:none;">— click any bar for details</span></h3>
         <canvas id="chart-issues"></canvas>
       </div>
     </div>
@@ -670,8 +670,9 @@
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const { tickets: all } = await res.json();
 
-      // Keep only tech tickets
+      // Keep only tech tickets for dashboard
       const tickets = all.filter(t => t.level2 === 'Tech Issue');
+      allCGMTickets = all; // store all CGM for search
 
       render(tickets, range);
       document.getElementById('loading').style.display = 'none';
@@ -690,10 +691,11 @@
   }
 
   let allTickets = [];
+  let allCGMTickets = [];
 
   function render(tickets, range) {
     allTickets = tickets;
-    const hasTag = (t, word) => t.tags.some(tag => tag.toLowerCase() === word.toLowerCase());
+    const hasTag = (t, word) => t.tags.some(tag => tag.toLowerCase().includes(word.toLowerCase()));
     const dups         = tickets.filter(t => hasTag(t, 'Duplicate'));
     const replacements = tickets.filter(t => hasTag(t, 'Replacement'));
     const waiting      = tickets.filter(t => t.status === 6);
@@ -811,10 +813,17 @@
             showDrilldown(label);
           }
         },
+        onHover: (evt, elements) => {
+          evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
         plugins: {
           legend: { display: false },
           datalabels: { ...DATALABEL_OUTSIDE, color: '#2c3e50' },
-          tooltip: { callbacks: { footer: () => 'Click to drill down' } }
+          tooltip: {
+            callbacks: {
+              footer: () => '👆 Click bar to drill down'
+            }
+          }
         },
         scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
       }
@@ -871,7 +880,7 @@
       const s = STATUS_MAP[t.status] || 'Other';
       statusCount[s] = (statusCount[s] || 0) + 1;
     });
-    const hasTagL = (t, w) => t.tags.some(tag => tag.toLowerCase() === w.toLowerCase());
+    const hasTagL = (t, w) => t.tags.some(tag => tag.toLowerCase().includes(w.toLowerCase()));
     const resolvedSub  = subset.filter(t => t.resolved_at && !hasTagL(t, 'Duplicate'));
     const dupsSub      = subset.filter(t => hasTagL(t, 'Duplicate')).length;
     const replaceSub   = subset.filter(t => hasTagL(t, 'Replacement')).length;
@@ -928,7 +937,7 @@
   function searchTickets() {
     const raw = document.getElementById('search-input').value.trim();
     if (!raw) return;
-    if (!allTickets.length) return alert('Please load ticket data first.');
+    if (!allCGMTickets.length) return alert('Please load ticket data first.');
 
     const q = raw.replace(/^#/, '').toLowerCase();
     const panel   = document.getElementById('search-panel');
@@ -936,11 +945,13 @@
     const countDiv = document.getElementById('search-count');
     const emptyDiv = document.getElementById('search-empty');
 
-    const results = allTickets.filter(t => {
-      const idMatch    = String(t.id).includes(q);
-      const emailMatch = t.requester_email && t.requester_email.toLowerCase().includes(q);
+    const results = allCGMTickets.filter(t => {
+      const idMatch     = String(t.id).includes(q);
+      const emailMatch  = t.requester_email && t.requester_email.toLowerCase().includes(q);
       const mobileMatch = t.mobile && t.mobile.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
-      return idMatch || emailMatch || mobileMatch;
+      const nameMatch   = t.requester_name && t.requester_name.toLowerCase().includes(q);
+      const subjectMatch = t.subject && t.subject.toLowerCase().includes(q);
+      return idMatch || emailMatch || mobileMatch || nameMatch || subjectMatch;
     });
 
     tbody.innerHTML = '';
@@ -978,6 +989,7 @@
     document.getElementById('search-panel').style.display = 'none';
     document.getElementById('search-table').innerHTML = '';
     document.getElementById('search-empty').style.display = 'none';
+    document.getElementById('search-count').textContent = '';
   }
 
   // Q&A
