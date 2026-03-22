@@ -104,6 +104,8 @@
     .card.teal   { border-left-color: #16a085; }
     .card.blue   { border-left-color: #2980b9; }
     .card.red    { border-left-color: #e74c3c; }
+    .card.cyan   { border-left-color: #00bcd4; }
+    .card.slate  { border-left-color: #607d8b; }
     .card .label { font-size: 0.73rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .card .value { font-size: 2rem; font-weight: 700; color: #1a1a2e; }
     .card .sub   { font-size: 0.73rem; color: #aaa; margin-top: 4px; }
@@ -175,6 +177,48 @@
     .badge.waiting  { background: #fef9e7; color: #e67e22; }
     .badge.pending  { background: #f9ebff; color: #8e44ad; }
     .badge.dup      { background: #fde8e8; color: #c0392b; }
+    .badge.closed   { background: #f0f0f0; color: #555; }
+
+    /* Wins box */
+    .wins-box {
+      background: white;
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 28px;
+      border-left: 4px solid #27ae60;
+    }
+    .wins-box h3 {
+      font-size: 0.85rem; font-weight: 600; color: #444;
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;
+    }
+    .wins-sub { font-size: 0.8rem; color: #888; margin-bottom: 14px; }
+    .wins-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+    .win-item {
+      background: #eafaf1; border-radius: 8px; padding: 12px 16px;
+      flex: 1; min-width: 200px; border-left: 3px solid #27ae60;
+    }
+    .win-title { font-weight: 600; font-size: 0.85rem; color: #1a5c36; margin-bottom: 4px; }
+    .win-detail { font-size: 0.78rem; color: #2e7d52; }
+
+    /* Search box */
+    .search-box {
+      background: white;
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 28px;
+    }
+    .search-box h3 {
+      font-size: 0.85rem; font-weight: 600; color: #444;
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 14px;
+    }
+    .search-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .search-row input {
+      flex: 1; min-width: 260px; padding: 9px 14px;
+      border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; outline: none;
+    }
+    .search-row input:focus { border-color: #1e3a5f; }
 
     /* Q&A */
     .qa-box {
@@ -277,6 +321,7 @@
 
 <div class="controls">
   <div class="period-toggle">
+    <button class="period-btn" id="btn-today" onclick="setPeriod('today')">Today</button>
     <button class="period-btn active" id="btn-week" onclick="setPeriod('week')">Week</button>
     <button class="period-btn" id="btn-month" onclick="setPeriod('month')">Month</button>
   </div>
@@ -334,7 +379,15 @@
       <div class="card blue">
         <div class="label">Avg Closure Time</div>
         <div class="value" id="c-avgclose">—</div>
-        <div class="sub">hrs (resolved tickets)</div>
+        <div class="sub">hrs (non-dup resolved)</div>
+      </div>
+      <div class="card cyan">
+        <div class="label">Open Tickets</div>
+        <div class="value" id="c-open">—</div>
+      </div>
+      <div class="card slate">
+        <div class="label">Closed Tickets</div>
+        <div class="value" id="c-closed">—</div>
       </div>
     </div>
 
@@ -385,6 +438,42 @@
       </table>
     </div>
 
+    <!-- Permanently Fixed Issues -->
+    <div class="wins-box">
+      <h3>✅ Permanently Fixed Issues</h3>
+      <p class="wins-sub">These issues have been permanently resolved at the product/firmware level and should no longer appear in tickets.</p>
+      <div class="wins-grid">
+        <div class="win-item">
+          <div class="win-title">Error 2 — Sensor Failure</div>
+          <div class="win-detail">Root cause addressed in firmware v2.4. Replacement protocol updated.</div>
+        </div>
+        <div class="win-item">
+          <div class="win-title">No Reading / Blank Reading</div>
+          <div class="win-detail">Sensor adhesion issue resolved with new applicator design (batch Q1 2026+).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Search -->
+    <div class="search-box">
+      <h3>🔍 Ticket Search</h3>
+      <div class="search-row">
+        <input type="text" id="search-input" placeholder="Enter ticket #ID or customer email address..." />
+        <button class="btn" onclick="searchTickets()">Search</button>
+        <button class="btn" style="background:#888;" onclick="clearSearch()">Clear</button>
+      </div>
+      <div id="search-results" style="margin-top:14px;display:none;">
+        <div id="search-count" style="font-size:0.82rem;color:#888;margin-bottom:10px;"></div>
+        <table>
+          <thead>
+            <tr><th>#ID</th><th>Subject</th><th>Issue Type</th><th>Status</th><th>Customer</th><th>Email</th><th>Created</th></tr>
+          </thead>
+          <tbody id="search-table"></tbody>
+        </table>
+      </div>
+      <div id="search-empty" style="display:none;color:#888;font-size:0.88rem;margin-top:12px;">No tickets found.</div>
+    </div>
+
     <!-- Q&A -->
     <div class="qa-box">
       <h3>Ask about this data</h3>
@@ -409,8 +498,30 @@
 <script>
   Chart.register(ChartDataLabels);
 
-  const STATUS_MAP   = { 2:'Open', 3:'Pending', 4:'Resolved', 5:'Resolved', 6:'Waiting on Customer', 7:'Pending' };
-  const STATUS_CLASS = { 2:'open', 3:'pending', 4:'resolved', 5:'resolved', 6:'waiting', 7:'pending' };
+  // Error SOP — fill in details once shared
+  const ERROR_INFO = {
+    'Error 13': {
+      what: 'Details coming soon — please share the SOP.',
+      why:  'Root cause to be documented.',
+      fix:  'Resolution steps to be added.',
+      prevent: 'Prevention measures to be added.'
+    },
+    'Error 15': {
+      what: 'Details coming soon — please share the SOP.',
+      why:  'Root cause to be documented.',
+      fix:  'Resolution steps to be added.',
+      prevent: 'Prevention measures to be added.'
+    },
+    'Error 103': {
+      what: 'Details coming soon — please share the SOP.',
+      why:  'Root cause to be documented.',
+      fix:  'Resolution steps to be added.',
+      prevent: 'Prevention measures to be added.'
+    },
+  };
+
+  const STATUS_MAP   = { 2:'Open', 3:'Pending', 4:'Resolved', 5:'Closed', 6:'Waiting on Customer', 7:'Pending' };
+  const STATUS_CLASS = { 2:'open', 3:'pending', 4:'resolved', 5:'closed', 6:'waiting', 7:'pending' };
 
   let charts = {};
   let currentSummary = null;
@@ -432,6 +543,7 @@
 
   function setPeriod(p) {
     currentPeriod = p;
+    document.getElementById('btn-today').classList.toggle('active', p === 'today');
     document.getElementById('btn-week').classList.toggle('active', p === 'week');
     document.getElementById('btn-month').classList.toggle('active', p === 'month');
     document.getElementById('week-picker').style.display = p === 'week' ? 'flex' : 'none';
@@ -439,7 +551,10 @@
   }
 
   function getDateRange() {
-    if (currentPeriod === 'week') {
+    if (currentPeriod === 'today') {
+      const d = new Date().toISOString().slice(0, 10);
+      return { from: `${d}T00:00:00Z`, to: `${d}T23:59:59Z`, label: `Today (${fmtDate(d)})` };
+    } else if (currentPeriod === 'week') {
       const f = document.getElementById('from-date').value;
       const t = document.getElementById('to-date').value;
       if (!f || !t) return null;
@@ -521,9 +636,11 @@
 
   function render(tickets, range) {
     allTickets = tickets;
-    const dups        = tickets.filter(t => t.tags.includes('Duplicate'));
+    const dups         = tickets.filter(t => t.tags.includes('Duplicate'));
     const replacements = tickets.filter(t => t.tags.includes('Replacement'));
-    const waiting     = tickets.filter(t => t.status === 6);
+    const waiting      = tickets.filter(t => t.status === 6);
+    const openTickets  = tickets.filter(t => t.status === 2);
+    const closedTickets = tickets.filter(t => t.status === 5);
 
     // Avg wait hours for waiting tickets
     const now = Date.now();
@@ -545,6 +662,8 @@
     document.getElementById('c-waiting').textContent      = waiting.length;
     document.getElementById('c-avgwait').textContent      = avgWait === '—' ? '—' : `${avgWait}h`;
     document.getElementById('c-avgclose').textContent     = avgClose === '—' ? '—' : `${avgClose}h`;
+    document.getElementById('c-open').textContent         = openTickets.length;
+    document.getElementById('c-closed').textContent       = closedTickets.length;
 
     // ----- Daily volume bar -----
     const dateMap = {};
@@ -694,16 +813,34 @@
       const s = STATUS_MAP[t.status] || 'Other';
       statusCount[s] = (statusCount[s] || 0) + 1;
     });
-    const resolvedSub = subset.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
-    const avgCloseSub = resolvedSub.length
+    const resolvedSub  = subset.filter(t => t.resolved_at && !t.tags.includes('Duplicate'));
+    const dupsSub      = subset.filter(t => t.tags.includes('Duplicate')).length;
+    const replaceSub   = subset.filter(t => t.tags.includes('Replacement')).length;
+    const avgCloseSub  = resolvedSub.length
       ? (resolvedSub.reduce((s, t) => s + (new Date(t.resolved_at) - new Date(t.created_at)) / 36e5, 0) / resolvedSub.length).toFixed(1)
       : '—';
 
+    // SOP info panel
+    const sop = ERROR_INFO[issueType];
+    const sopHtml = sop ? `
+      <div style="background:#f7f9ff;border-left:3px solid #1e3a5f;border-radius:6px;padding:14px 18px;margin-bottom:14px;font-size:0.84rem;line-height:1.7;">
+        <div style="font-weight:700;color:#1e3a5f;margin-bottom:8px;">📋 SOP: ${issueType}</div>
+        <div><strong>What is it?</strong> ${sop.what}</div>
+        <div><strong>Why does it occur?</strong> ${sop.why}</div>
+        <div><strong>How to resolve?</strong> ${sop.fix}</div>
+        <div><strong>How to reduce occurrences?</strong> ${sop.prevent}</div>
+      </div>` : '';
+
     document.getElementById('drilldown-stats').innerHTML =
+      sopHtml +
+      `<div style="display:flex;gap:10px;flex-wrap:wrap;">` +
       Object.entries(statusCount).map(([s, n]) =>
         `<span style="background:#f0f4fa;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${n}</strong> ${s}</span>`
       ).join('') +
-      `<span style="background:#eafaf1;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${avgCloseSub}h</strong> Avg Closure</span>`;
+      `<span style="background:#eafaf1;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${avgCloseSub}h</strong> Avg Closure</span>` +
+      `<span style="background:#fde8e8;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${dupsSub}</strong> Duplicates</span>` +
+      `<span style="background:#fef3e8;border-radius:6px;padding:6px 14px;font-size:0.82rem;"><strong>${replaceSub}</strong> Replacements</span>` +
+      `</div>`;
 
     // Ticket list
     const tbody = document.getElementById('drilldown-table');
@@ -727,6 +864,55 @@
 
     panel.style.display = 'block';
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function searchTickets() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    if (!q) return;
+    if (!allTickets.length) return alert('Please load ticket data first.');
+
+    const results = allTickets.filter(t =>
+      String(t.id) === q ||
+      (t.requester_email && t.requester_email.toLowerCase().includes(q)) ||
+      (t.mobile && t.mobile.includes(q))
+    );
+
+    const resultsDiv  = document.getElementById('search-results');
+    const emptyDiv    = document.getElementById('search-empty');
+    const tbody       = document.getElementById('search-table');
+    const countDiv    = document.getElementById('search-count');
+
+    tbody.innerHTML = '';
+    if (results.length === 0) {
+      resultsDiv.style.display = 'none';
+      emptyDiv.style.display = 'block';
+      return;
+    }
+
+    emptyDiv.style.display = 'none';
+    resultsDiv.style.display = 'block';
+    countDiv.textContent = `${results.length} ticket(s) found`;
+
+    results.forEach(t => {
+      const statusLabel = STATUS_MAP[t.status] || t.status;
+      const statusCls   = STATUS_CLASS[t.status] || '';
+      const created = new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      tbody.innerHTML += `<tr>
+        <td><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
+        <td>${t.level3 || '—'}</td>
+        <td><span class="badge ${statusCls}">${statusLabel}</span></td>
+        <td>${t.requester_name || '—'}</td>
+        <td>${t.requester_email || '—'}</td>
+        <td style="white-space:nowrap;">${created}</td>
+      </tr>`;
+    });
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('search-empty').style.display = 'none';
   }
 
   // Q&A

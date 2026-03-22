@@ -8,7 +8,7 @@ async function fetchAllTickets(since) {
   let all = [];
 
   while (true) {
-    const url = `https://${DOMAIN}/api/v2/tickets?updated_since=${since}&per_page=100&page=${page}&include=stats`;
+    const url = `https://${DOMAIN}/api/v2/tickets?updated_since=${since}&per_page=100&page=${page}&include=stats,requester`;
     const res = await fetch(url, {
       headers: {
         Authorization: "Basic " + Buffer.from(`${API_KEY}:X`).toString("base64"),
@@ -70,6 +70,8 @@ module.exports = async (req, res) => {
       mobile: t.custom_fields?.cf_registered_mobile_number || null,
       type: t.type,
       resolved_at: t.stats?.resolved_at || null,
+      requester_email: t.requester?.email || null,
+      requester_name: t.requester?.name || null,
     }));
 
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate"); // 5-min cache
