@@ -971,8 +971,8 @@
       </tr>`;
     });
 
-    panel.style.display = 'block';
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('drilldown-panel').style.display = 'block';
+    document.getElementById('drilldown-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function searchTickets() {
@@ -980,9 +980,9 @@
     if (!raw) return;
     if (!allCGMTickets.length) return alert('Please load ticket data first, then search.');
 
-    const q      = raw.replace(/^#/, '').toLowerCase();
-    const modal   = document.getElementById('search-modal');
-    const tbody   = document.getElementById('search-table');
+    const q        = raw.replace(/^#/, '').toLowerCase();
+    const modal    = document.getElementById('search-modal');
+    const tbody    = document.getElementById('search-table');
     const countDiv = document.getElementById('search-count');
     const emptyDiv = document.getElementById('search-empty');
 
@@ -996,7 +996,6 @@
     });
 
     tbody.innerHTML = '';
-    const modal = document.getElementById('search-modal');
     modal.style.display = 'block';
 
     if (results.length === 0) {
