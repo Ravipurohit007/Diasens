@@ -388,7 +388,17 @@
 
 <div class="main">
   <div id="error-msg"></div>
-  <div id="loading" style="display:flex;">Fetching tickets from Freshdesk...</div>
+  <div id="loading" style="display:none;align-items:center;justify-content:center;padding:60px;font-size:1rem;color:#888;">
+    Fetching tickets from Freshdesk...
+  </div>
+  <div id="welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 32px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:16px;">📊</div>
+    <h2 style="font-size:1.4rem;font-weight:700;color:#1e3a5f;margin-bottom:10px;">CGM Support Intelligence Dashboard</h2>
+    <p style="font-size:0.95rem;color:#888;max-width:480px;line-height:1.7;margin-bottom:8px;">
+      Track CGM tech issues in real time — volume trends, error breakdowns, replacements, closure times, and AI-powered insights, all in one place.
+    </p>
+    <p style="font-size:0.88rem;color:#aaa;">Select a time period above and click <strong style="color:#1e3a5f;">Load</strong> to get started.</p>
+  </div>
 
   <div id="dashboard">
 
@@ -685,6 +695,7 @@
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
     document.getElementById('loading').style.display = 'flex';
+    document.getElementById('welcome').style.display = 'none';
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('error-msg').style.display = 'none';
     document.getElementById('qa-response').style.display = 'none';
@@ -705,6 +716,7 @@
       document.getElementById('search-loaded').textContent = `${all.length} tickets loaded`;
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
+      document.getElementById('welcome').style.display = 'flex';
       const err = document.getElementById('error-msg');
       err.textContent = `Error: ${e.message}`;
       err.style.display = 'block';
@@ -955,7 +967,8 @@
     const results = allCGMTickets.filter(t => {
       const idMatch      = String(t.id).includes(q);
       const emailMatch   = t.requester_email && t.requester_email.toLowerCase().includes(q);
-      const mobileMatch  = t.mobile && t.mobile.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      const mobileRaw    = (t.mobile || '').replace(/\D/g, '');
+      const mobileMatch  = mobileRaw && mobileRaw.includes(q.replace(/\D/g, ''));
       const nameMatch    = t.requester_name && t.requester_name.toLowerCase().includes(q);
       const subjectMatch = t.subject && t.subject.toLowerCase().includes(q);
       return idMatch || emailMatch || mobileMatch || nameMatch || subjectMatch;
@@ -963,10 +976,11 @@
 
     tbody.innerHTML = '';
     modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
 
     if (results.length === 0) {
       emptyDiv.style.display = 'block';
-      countDiv.textContent = `No results for "${raw}"`;
+      countDiv.textContent = `No results for "${raw}" in ${allCGMTickets.length} loaded tickets`;
       return;
     }
 
@@ -995,6 +1009,7 @@
     document.getElementById('search-table').innerHTML = '';
     document.getElementById('search-empty').style.display = 'none';
     document.getElementById('search-count').textContent = '';
+    document.body.style.overflow = '';
   }
 
   // Close modal on backdrop click
