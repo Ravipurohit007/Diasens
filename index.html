@@ -983,7 +983,7 @@
         if (t.requester_email && t.requester_email.toLowerCase().includes(q)) return true;
         if (t.requester_name  && t.requester_name.toLowerCase().includes(q))  return true;
         if (t.subject         && t.subject.toLowerCase().includes(q))          return true;
-        const mob = (t.mobile || '').replace(/\D/g, '');
+        const mob = String(t.mobile || '').replace(/\D/g, '');
         if (mob && mob.includes(q.replace(/\D/g, ''))) return true;
         return false;
       });
