@@ -32,6 +32,7 @@
       font-weight: 600; cursor: pointer; transition: background 0.15s;
     }
     .brand-btn:hover { background: rgba(255,255,255,0.25); }
+    .brand-btn-active { background: #1e3a5f !important; color: white !important; border-color: #1e3a5f !important; }
 
     .controls {
       background: white;
@@ -322,11 +323,7 @@
 
 <header>
   <h1>CGM Tech Issues Dashboard — GoodFlip / TatvaCare</h1>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <button id="btn-diasens" class="brand-btn">Diasens</button>
-    <button id="btn-goodflip" class="brand-btn">Goodflip</button>
-    <span id="last-updated" style="font-size:0.78rem;opacity:0.6;margin-left:8px;"></span>
-  </div>
+  <span id="last-updated" style="font-size:0.78rem;opacity:0.6;"></span>
 </header>
 
 <div class="controls">
@@ -349,6 +346,8 @@
   </div>
 
   <button class="btn" id="load-btn" onclick="loadData()">Load</button>
+  <button id="btn-diasens" class="brand-btn" onclick="alert('clicked! tickets='+allTechTickets.length)" style="border-color:#1e3a5f;color:#1e3a5f;background:white;">Diasens</button>
+  <button id="btn-goodflip" class="brand-btn" onclick="alert('clicked! tickets='+allTechTickets.length)" style="border-color:#1e3a5f;color:#1e3a5f;background:white;">GoodFlip</button>
   <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
     <input type="text" id="search-input" placeholder="Ticket # or email..." style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;outline:none;width:200px;" onfocus="this.style.borderColor='#1e3a5f'" onblur="this.style.borderColor='#ccc'" onkeydown="if(event.key==='Enter')searchTickets()" />
     <button class="btn" onclick="searchTickets()">Search</button>
@@ -522,6 +521,12 @@
 </div>
 
 <script>
+  // Catch any JS errors and show them visibly
+  window.addEventListener('error', function(e) {
+    const errDiv = document.getElementById('error-msg');
+    if (errDiv) { errDiv.textContent = 'JS Error: ' + e.message + ' (line ' + e.lineno + ')'; errDiv.style.display = 'block'; }
+  });
+
   Chart.register(ChartDataLabels);
 
   // Error SOP — sourced from CGM Device SOP document
@@ -709,6 +714,15 @@
       const tickets = all.filter(t => t.level2 === 'Tech Issue');
       allCGMTickets = all; // store all CGM for search
 
+      allTechTickets = tickets;
+      currentRange = range;
+      currentBrandFilter = null;
+      document.getElementById('btn-diasens').classList.remove('brand-btn-active');
+      document.getElementById('btn-goodflip').classList.remove('brand-btn-active');
+      const diasensCount = tickets.filter(t => t.product_name === 'Diasens').length;
+      const goodflipCount = tickets.filter(t => t.product_name === 'MyTatva Support').length;
+      document.getElementById('btn-diasens').textContent = diasensCount ? `Diasens (${diasensCount})` : 'Diasens';
+      document.getElementById('btn-goodflip').textContent = goodflipCount ? `GoodFlip (${goodflipCount})` : 'GoodFlip';
       render(tickets, range);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
@@ -727,6 +741,28 @@
 
   let allTickets = [];
   let allCGMTickets = [];
+  let allTechTickets = [];
+  let currentRange = null;
+  let currentBrandFilter = null;
+
+  function setBrandFilter(brand) {
+    try {
+      if (!allTechTickets.length) {
+        alert('Please load ticket data first by selecting a date range and clicking Load.');
+        return;
+      }
+      currentBrandFilter = (currentBrandFilter === brand) ? null : brand;
+      document.getElementById('btn-diasens').classList.toggle('brand-btn-active', currentBrandFilter === 'Diasens');
+      document.getElementById('btn-goodflip').classList.toggle('brand-btn-active', currentBrandFilter === 'MyTatva Support');
+      const filtered = currentBrandFilter
+        ? allTechTickets.filter(t => t.product_name === currentBrandFilter)
+        : allTechTickets;
+      render(filtered, currentRange);
+      document.getElementById('dashboard').style.display = 'block';
+    } catch(err) {
+      alert('Brand filter error: ' + err.message);
+    }
+  }
 
   function render(tickets, range) {
     allTickets = tickets;
@@ -1027,6 +1063,7 @@
   document.getElementById('search-modal').addEventListener('click', function(e) {
     if (e.target === this) clearSearch();
   });
+
 
   // Q&A
   function fillQ(text) {

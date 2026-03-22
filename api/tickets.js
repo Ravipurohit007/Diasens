@@ -3,6 +3,20 @@ const fetch = require("node-fetch");
 const DOMAIN = process.env.FRESHDESK_DOMAIN; // e.g. tatvacare-help.freshdesk.com
 const API_KEY = process.env.FRESHDESK_API_KEY;
 
+async function fetchProducts() {
+  const url = `https://${DOMAIN}/api/v2/products`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: "Basic " + Buffer.from(`${API_KEY}:X`).toString("base64"),
+    },
+  });
+  if (!res.ok) return {};
+  const products = await res.json();
+  const map = {};
+  products.forEach((p) => { map[p.id] = p.name; });
+  return map;
+}
+
 async function fetchAllTickets(since) {
   let page = 1;
   let all = [];
@@ -43,7 +57,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Missing 'from' query param (ISO date)" });
     }
 
-    const all = await fetchAllTickets(from);
+    const [all, productMap] = await Promise.all([fetchAllTickets(from), fetchProducts()]);
 
     // Filter to CGM Issue tickets created within the date range
     const cgm = all.filter((t) => {
@@ -72,6 +86,7 @@ module.exports = async (req, res) => {
       resolved_at: t.stats?.resolved_at || null,
       requester_email: t.requester?.email || null,
       requester_name: t.requester?.name || null,
+      product_name: productMap[t.product_id] || null,
     }));
 
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate"); // 5-min cache
