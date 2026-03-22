@@ -346,29 +346,34 @@
   </div>
 </div>
 
-<!-- Search Results Panel (outside dashboard, always accessible) -->
-<div id="search-panel" style="display:none;background:white;border-top:2px solid #1e3a5f;padding:16px 32px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-    <span id="search-count" style="font-size:0.85rem;font-weight:600;color:#1e3a5f;"></span>
-    <button onclick="clearSearch()" style="background:none;border:none;cursor:pointer;color:#888;font-size:0.82rem;">✕ Close</button>
+<!-- Search Modal Overlay -->
+<div id="search-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;">
+  <div style="background:white;margin:40px auto;max-width:1100px;border-radius:12px;padding:28px;position:relative;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-size:1rem;font-weight:700;color:#1e3a5f;">Search Results</div>
+        <div id="search-count" style="font-size:0.82rem;color:#888;margin-top:2px;"></div>
+      </div>
+      <button onclick="clearSearch()" style="background:#f0f0f0;border:none;cursor:pointer;color:#333;font-size:0.9rem;padding:8px 16px;border-radius:6px;font-weight:600;">✕ Close</button>
+    </div>
+    <div id="search-empty" style="display:none;color:#888;font-size:0.9rem;padding:20px 0;">No tickets found. Try a different ticket number, email, or name.</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
+        <thead>
+          <tr style="background:#f7f8fa;border-bottom:2px solid #e0e0e0;">
+            <th style="text-align:left;padding:10px 12px;color:#555;">#ID</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Subject</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Issue Type</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Status</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Customer</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Email</th>
+            <th style="text-align:left;padding:10px 12px;color:#555;">Created</th>
+          </tr>
+        </thead>
+        <tbody id="search-table"></tbody>
+      </table>
+    </div>
   </div>
-  <div style="overflow-x:auto;">
-    <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
-      <thead>
-        <tr style="background:#f7f8fa;border-bottom:2px solid #e0e0e0;">
-          <th style="text-align:left;padding:8px 12px;color:#555;">#ID</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Subject</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Issue Type</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Status</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Customer</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Email</th>
-          <th style="text-align:left;padding:8px 12px;color:#555;">Created</th>
-        </tr>
-      </thead>
-      <tbody id="search-table"></tbody>
-    </table>
-  </div>
-  <div id="search-empty" style="display:none;color:#888;font-size:0.88rem;padding:10px 0;">No tickets found matching your search.</div>
 </div>
 
 <div class="main">
@@ -539,6 +544,12 @@
       fix: '1. Remove the transmitter, clean it, and reattach. 2. Gently press for 30 seconds. 3. Wait for readings to stabilize. Replacement after 24 hours with Tracky Team confirmation.',
       prevent: 'Ensure tape is firmly applied. Avoid rubbing with towel or hitting sensor. Replace adhesive patch in summer months.'
     },
+    'CGM Sensor Loose / Coming Off – Error 13': {
+      what: 'Error Take Off — poor contact between sensor and transmitter.',
+      why: '1. Improper use causing poor connection. 2. Transmitter has been moved. 3. Adhesive tape coming off.',
+      fix: '1. Remove the transmitter, clean it, and reattach. 2. Gently press for 30 seconds. 3. Wait for readings to stabilize. Replacement after 24 hours with Tracky Team confirmation.',
+      prevent: 'Ensure tape is firmly applied. Avoid rubbing with towel or hitting sensor. Replace adhesive patch in summer months.'
+    },
     'Error 14': {
       what: 'Error Breakage — physical electrode breakage.',
       why: 'Electrode breakage caused by body movement or mishandling.',
@@ -551,6 +562,12 @@
       fix: '1. Remove the transmitter, clean it, and reattach. 2. Listen for the click sound to confirm correct placement. Replacement after Tracky Team confirmation.',
       prevent: 'Train users to always listen for the click when attaching transmitter. Check connection regularly.'
     },
+    'Sensor–Transmitter Connection Issue – Error 15': {
+      what: 'Error Touch — poor connection between sensor and transmitter.',
+      why: 'Poor physical connection between the sensor body and the transmitter.',
+      fix: '1. Remove the transmitter, clean it, and reattach. 2. Listen for the click sound to confirm correct placement. Replacement after Tracky Team confirmation.',
+      prevent: 'Train users to always listen for the click when attaching transmitter. Check connection regularly.'
+    },
     'Error 16': {
       what: 'Error Flooding Water — waterproofing failure.',
       why: 'Water ingress into the sensor/transmitter beyond IP58 rating.',
@@ -558,6 +575,12 @@
       prevent: 'Educate users: IP58 rating means max 1.5m depth for 30 min. Avoid swimming, sauna, jacuzzi, steam baths, and ice baths.'
     },
     'Error 103': {
+      what: 'Error Current Small — insufficient electrical signal from sensor.',
+      why: 'Improper use, human body rejection reaction, or excessive body movement.',
+      fix: '1. Remove transmitter, clean, reattach, press firmly for 30 seconds. 2. Wait 1 hour for readings to stabilize. 3. Perform Reconnection Journey in the app if readings don\'t appear. Replacement if Reconnection fails, after Tracky Team confirmation.',
+      prevent: 'Same as Error 11/13. Replacement only if customer contacts before Day 10 of sensor use.'
+    },
+    'Sensor/Transmitter Connection Issue – Error 103': {
       what: 'Error Current Small — insufficient electrical signal from sensor.',
       why: 'Improper use, human body rejection reaction, or excessive body movement.',
       fix: '1. Remove transmitter, clean, reattach, press firmly for 30 seconds. 2. Wait 1 hour for readings to stabilize. 3. Perform Reconnection Journey in the app if readings don\'t appear. Replacement if Reconnection fails, after Tracky Team confirmation.',
@@ -946,21 +969,21 @@
     const emptyDiv = document.getElementById('search-empty');
 
     const results = allCGMTickets.filter(t => {
-      const idMatch     = String(t.id).includes(q);
-      const emailMatch  = t.requester_email && t.requester_email.toLowerCase().includes(q);
-      const mobileMatch = t.mobile && t.mobile.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
-      const nameMatch   = t.requester_name && t.requester_name.toLowerCase().includes(q);
+      const idMatch      = String(t.id).includes(q);
+      const emailMatch   = t.requester_email && t.requester_email.toLowerCase().includes(q);
+      const mobileMatch  = t.mobile && t.mobile.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      const nameMatch    = t.requester_name && t.requester_name.toLowerCase().includes(q);
       const subjectMatch = t.subject && t.subject.toLowerCase().includes(q);
       return idMatch || emailMatch || mobileMatch || nameMatch || subjectMatch;
     });
 
     tbody.innerHTML = '';
-    panel.style.display = 'block';
+    const modal = document.getElementById('search-modal');
+    modal.style.display = 'block';
 
     if (results.length === 0) {
       emptyDiv.style.display = 'block';
-      countDiv.textContent = '';
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      countDiv.textContent = `No results for "${raw}"`;
       return;
     }
 
@@ -972,25 +995,29 @@
       const statusCls   = STATUS_CLASS[t.status] || '';
       const created = new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
       tbody.innerHTML += `<tr style="border-bottom:1px solid #f0f0f0;">
-        <td style="padding:8px 12px;"><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
-        <td style="padding:8px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
-        <td style="padding:8px 12px;">${t.level3 || '—'}</td>
-        <td style="padding:8px 12px;"><span class="badge ${statusCls}">${statusLabel}</span></td>
-        <td style="padding:8px 12px;">${t.requester_name || '—'}</td>
-        <td style="padding:8px 12px;">${t.requester_email || '—'}</td>
-        <td style="padding:8px 12px;white-space:nowrap;">${created}</td>
+        <td style="padding:10px 12px;"><a href="https://tatvacare-help.freshdesk.com/a/tickets/${t.id}" target="_blank" style="color:#1e3a5f;font-weight:600;">#${t.id}</a></td>
+        <td style="padding:10px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.subject}">${t.subject}</td>
+        <td style="padding:10px 12px;">${t.level3 || '—'}</td>
+        <td style="padding:10px 12px;"><span class="badge ${statusCls}">${statusLabel}</span></td>
+        <td style="padding:10px 12px;">${t.requester_name || '—'}</td>
+        <td style="padding:10px 12px;">${t.requester_email || '—'}</td>
+        <td style="padding:10px 12px;white-space:nowrap;">${created}</td>
       </tr>`;
     });
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function clearSearch() {
     document.getElementById('search-input').value = '';
-    document.getElementById('search-panel').style.display = 'none';
+    document.getElementById('search-modal').style.display = 'none';
     document.getElementById('search-table').innerHTML = '';
     document.getElementById('search-empty').style.display = 'none';
     document.getElementById('search-count').textContent = '';
   }
+
+  // Close modal on backdrop click
+  document.getElementById('search-modal').addEventListener('click', function(e) {
+    if (e.target === this) clearSearch();
+  });
 
   // Q&A
   function fillQ(text) {
