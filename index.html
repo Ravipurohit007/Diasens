@@ -726,19 +726,13 @@
     document.getElementById('qa-response').style.display = 'none';
 
     try {
-      const prevRange = getPrevRange(range);
-      const [r1, r2] = await Promise.all([
-        fetch(`/api/tickets?from=${range.from}&to=${range.to}`),
-        fetch(`/api/tickets?from=${prevRange.from}&to=${prevRange.to}`)
-      ]);
-      if (!r1.ok) throw new Error(`API error: ${r1.status}`);
-      const { tickets: all } = await r1.json();
-      const prevAll = r2.ok ? (await r2.json()).tickets : [];
+      const res = await fetch(`/api/tickets?from=${range.from}&to=${range.to}`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const { tickets: all } = await res.json();
 
       // Keep only tech tickets for dashboard
       const tickets = all.filter(t => t.level2 === 'Tech Issue');
-      const prevTickets = prevAll.filter(t => t.level2 === 'Tech Issue');
-      allCGMTickets = all; // store all CGM for search
+      allCGMTickets = all;
 
       allTechTickets = tickets;
       currentRange = range;
@@ -749,12 +743,28 @@
       const goodflipCount = tickets.filter(t => t.product_name === 'MyTatva Support').length;
       document.getElementById('btn-diasens').textContent = diasensCount ? `Diasens (${diasensCount})` : 'Diasens';
       document.getElementById('btn-goodflip').textContent = goodflipCount ? `GoodFlip (${goodflipCount})` : 'GoodFlip';
-      renderComparison(tickets, prevTickets, range, prevRange);
       render(tickets, range);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('last-updated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
       document.getElementById('search-loaded').textContent = `${all.length} tickets loaded`;
+
+      // Fetch previous period separately (non-blocking — won't break main dashboard if it fails)
+      try {
+        const prevRange = getPrevRange(range);
+        document.getElementById('comparison-label').textContent = `— loading previous period...`;
+        document.getElementById('comparison-box').style.display = 'block';
+        const r2 = await fetch(`/api/tickets?from=${prevRange.from}&to=${prevRange.to}`);
+        if (r2.ok) {
+          const { tickets: prevAll } = await r2.json();
+          const prevTickets = prevAll.filter(t => t.level2 === 'Tech Issue');
+          renderComparison(tickets, prevTickets, range, prevRange);
+        } else {
+          document.getElementById('comparison-box').style.display = 'none';
+        }
+      } catch(e2) {
+        document.getElementById('comparison-box').style.display = 'none';
+      }
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('welcome').style.display = 'flex';
